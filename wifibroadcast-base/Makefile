@@ -1,12 +1,15 @@
-LDFLAGS=-lrt -lpcap -lwiringPi
-CPPFLAGS=-Wall -O2 -march=armv6zk -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -D _GNU_SOURCE
-CFLAGS := $(CFLAGS) -I/home/pi/wifibroadcast-base -I/usr/local/include/mavlink
+#LDFLAGS=-lrt -lpcap -lwiringPi
+LDFLAGS=-lrt -lpcap
+#CPPFLAGS=-Wall -O2 -march=armv6zk -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard -D _GNU_SOURCE
+CPPFLAGS=-Wall -O2 -D _GNU_SOURCE -fstack-protector
+CFLAGS := $(CFLAGS) -I/home/pi/wifibroadcast-base -I/usr/local/include/mavlink -fstack-protector
 
-all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward rssi_qgc_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
+#all: rx_rc_telemetry_buf rx rx_rc_telemetry rssirx rssitx tx_rawsock tx_telemetry rx_status tracker rssilogger syslogger channelscan check_alive rssi_forward rssi_qgc_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
+all: rx rx_rc_telemetry_buf rssirx rssitx tx_rawsock tx_telemetry rx_status rssilogger syslogger channelscan check_alive rssi_forward rssi_qgc_forward wifiscan wifibackgroundscan sharedmem_init_rx sharedmem_init_tx
 
 %.o: %.c
 	gcc $(CFLAGS) -c -o $@ $< $(CPPFLAGS)
-	
+
 
 rx: rx.o openhdlib.o radiotap.o fec.o
 	gcc -o $@ $^ $(LDFLAGS)
