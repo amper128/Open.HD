@@ -26,7 +26,7 @@
 #include <termios.h> // serialport
 #include <time.h>
 
-#include <openhd/mavlink.h>
+//#include <openhd/mavlink.h>
 
 
 

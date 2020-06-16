@@ -31,7 +31,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <openhd/mavlink.h>
+//#include <openhd/mavlink.h>
 
 int sock = 0;
 int socks[5];
@@ -39,8 +39,8 @@ int type[5];
 
 //struct timeval time;
 
-mavlink_status_t status;
-mavlink_message_t msg;
+/*mavlink_status_t status;
+mavlink_message_t msg;*/
 
 
 // header buffer for atheros
@@ -704,6 +704,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (param_telemetry_protocol == 0) { 
+#if 0
             /* 
              * Parse Mavlink messages so that each message can be sent in a separate wifi frame, and
              * so that we can send the same message twice to handle interference.
@@ -885,7 +886,7 @@ int main(int argc, char *argv[]) {
     
                         fprintf(stderr, "\n");
                     }
-                    len_msg = mavlink_msg_to_send_buffer(mavlink_message, &msg);
+                    //len_msg = mavlink_msg_to_send_buffer(mavlink_message, &msg);
                     
                     if (param_retransmissions == 1) {
                         sendpacket(seqno, len_msg, &td, param_transmission_mode, num_interfaces, mavlink_message);
@@ -907,6 +908,7 @@ int main(int argc, char *argv[]) {
                     seqno++;
                 }
             }
+#endif
         } else { 
             /*
              * Generic telemetry handling, we don't parse the message structure 
