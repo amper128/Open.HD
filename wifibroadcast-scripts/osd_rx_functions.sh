@@ -1,37 +1,5 @@
 ## runs on RX (ground pi)
-function osdrx_function {
-    #
-    # Convert osdconfig.txt from DOS format to UNIX format
-    #
-    ionice -c 3 nice dos2unix -n /boot/osdconfig.txt /tmp/osdconfig.txt
-    echo
-    
-    if [ "${DISPLAY_OSD}" == "Y" ]; then
-        if [ "${ENABLE_QOPENHD}" == "Y" ]; then
-            systemctl start qopenhd
-        else
-            cd /home/pi/wifibroadcast-osd
-            
-            echo "Building OSD"
-            
-            ionice -c 3 nice make -j2 || {
-                echo
-                echo "ERROR: Could not build OSD, check osdconfig.txt!"
-                
-                sleep 5
-                
-                wbc_status "ERROR: Could not build OSD, check osdconfig.txt for errors." 7 55 0 &
-                
-                sleep 5
-            }
-        fi
-    
-    else 
-        echo "OSD disabled"
-    fi
-    
-    echo
-
+function osdrx_function {    
     while true; do
         killall wbc_status > /dev/null 2>&1
 
@@ -77,8 +45,16 @@ function osdrx_function {
 
         ionice -c 3 nice cat /root/telemetryfifo3 >> /wbc_tmp/telemetrydowntmp.raw &
         pause_while
-        if [ "${ENABLE_QOPENHD}" != "Y" ]; then
-            /tmp/osd >> /wbc_tmp/telemetrydowntmp.txt &
+        sleep 5
+
+        systemctl stop openhdboot
+
+        if [ "${DISPLAY_OSD}" == "Y" ]; then
+            if [ "${ENABLE_QOPENHD}" == "Y" ]; then
+                systemctl start qopenhd
+            else
+                systemctl start osd
+            fi
         fi
 
         if [ "${RELAY}" == "Y" ]; then
@@ -102,10 +78,9 @@ function osdrx_function {
         fi
 
         
-        echo "ERROR: Telemetry RX has been stopped - restarting RX and OSD ..."
+        echo "ERROR: Telemetry RX has been stopped - restarting RX ..."
         ps -ef | nice grep "rx -p 1" | nice grep -v grep | awk '{print $2}' | xargs kill -9
         ps -ef | nice grep "ftee /root/telemetryfifo" | nice grep -v grep | awk '{print $2}' | xargs kill -9
-        ps -ef | nice grep "/tmp/osd" | nice grep -v grep | awk '{print $2}' | xargs kill -9
         ps -ef | nice grep "cat /root/telemetryfifo3" | nice grep -v grep | awk '{print $2}' | xargs kill -9
         sleep 1
     done

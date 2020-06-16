@@ -15,7 +15,7 @@ echo $op
 #echo $ip
 #echo $hostname
 
-export PATH=/home/pi/wifibroadcast-status:${PATH}
+export PATH=/usr/local/bin:${PATH}
 
 if [ ! -f /tmp/mavlink_router_pipe ]; then 
     sleep 1
@@ -32,7 +32,7 @@ if [[ $op == "old" || $op == "add" ]]; then
 	echo "add udp $IP $IP 14550 0" > /tmp/mavlink_router_pipe
 	if [ "$QUIET" == "N" ]; then
             if [ "$ENABLE_QOPENHD" == "Y" ]; then
-                qstatus "External device connected: $IP" 3
+                qstatus "External device connected: $IP" 5
             else
                 wbc_status "External device connected: $IP" 5 55 0 &
             fi
@@ -61,7 +61,7 @@ if [[ $op == "old" || $op == "add" ]]; then
 
         if [ "$QUIET" == "N" ]; then
                 if [ "$ENABLE_QOPENHD" == "Y" ]; then
-                    qstatus "External device gone: $IP" 3
+                    qstatus "External device gone: $IP" 5
                 else
                     wbc_status "External device gone: $IP" 5 55 0 &
                 fi

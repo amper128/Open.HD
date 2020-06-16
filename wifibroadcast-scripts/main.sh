@@ -16,13 +16,15 @@ TTY=`tty`
 # GPIO variable
 CONFIGFILE=`/root/wifibroadcast_misc/gpio-config.py`
 
-export PATH=/home/pi/wifibroadcast-status:${PATH}
+export PATH=/usr/local/bin:${PATH}
 
 autoenable_i2c_vc
 
 check_camera_attached
 
 check_hdmi_csi_attached
+
+start_microservices
 
 check_lifepowered_pi_attached
 
@@ -35,10 +37,18 @@ migration_helper
 configure_hello_video_args
 
 
+detect_wfb_primary_band
+
+auto_frequency_select
+
 
 echo "-------------------------------------"
 echo "SETTINGS FILE: $CONFIGFILE"
 echo "-------------------------------------"
+if [ "$TTY" == "/dev/tty1" ]; then
+    echo "Using settings file $CONFIGFILE"
+    qstatus "Using settings file $CONFIGFILE" 5
+fi
 
 #
 # Set the wifi parameters based on the selected datarate
@@ -164,6 +174,7 @@ case $TTY in
                 
                 if cat /sys/class/net/eth0/carrier | nice grep -q 1; then
                     echo "Ethernet connection detected"
+                    qstatus "Ethernet connection detected" 5
 
                     CARRIER=1
                     
@@ -171,9 +182,9 @@ case $TTY in
                         ETHCLIENTIP=`ip addr show eth0 | grep -Po 'inet \K[\d.]+'`
                     
                         if [ "$ENABLE_QOPENHD" == "Y" ]; then
-                            qstatus "Ethernet connected. IP: $ETHCLIENTIP" 3
+                            qstatus "Ethernet IP: $ETHCLIENTIP" 5
                         else
-                            wbc_status "Ethernet connected. IP: $ETHCLIENTIP" 7 55 0 &
+                            wbc_status "Ethernet IP: $ETHCLIENTIP" 7 55 0 &
                         fi
 
                         ping -n -q -c 1 1.1.1.1
@@ -183,6 +194,7 @@ case $TTY in
                         nice ifconfig eth0 down
                         
                         echo "DHCP failed"
+                        qstatus "DHCP failed" 3
                         
                         killall wbc_status > /dev/null 2>&1
                         
@@ -194,9 +206,11 @@ case $TTY in
                     fi
                 else
                     echo "No ethernet connection detected"
+                    qstatus "No ethernet connection detected" 5
                 fi
             else
                 echo "Ethernet Hotspot enabled, doing nothing"
+                qstatus "Ethernet hotspot enabled" 5
             fi
             sleep 365d
         fi

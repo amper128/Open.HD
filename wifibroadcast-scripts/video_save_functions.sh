@@ -62,9 +62,11 @@ function save_function {
     
 
     #
-    # Kill OSD so we can safely start wbc_status
-    #
-    ps -ef | nice grep "osd" | nice grep -v grep | awk '{print $2}' | xargs kill -9
+    # Kill old OSD temporarily
+    #   
+    if [ "${ENABLE_QOPENHD}" != "Y" ]; then
+        systemctl stop osd
+    fi
     
 
     #
@@ -113,7 +115,7 @@ function save_function {
 
 
     if [ "${ENABLE_QOPENHD}" == "Y" ]; then
-        qstatus "Saving to USB. This may take some time ..." 3
+        qstatus "Saving to USB. This may take some time ..." 5
     else
         wbc_status "Saving to USB. This may take some time ..." 7 55 0 &
     fi
@@ -279,7 +281,7 @@ function save_function {
                 killall wbc_status > /dev/null 2>&1
 
                 if [ "${ENABLE_QOPENHD}" == "Y" ]; then
-                    qstatus "Saving - please wait ..." 3
+                    qstatus "Saving - please wait ..." 5
                 else
                     wbc_status "Saving - please wait ..." 7 65 0 &
                 fi
@@ -307,7 +309,7 @@ function save_function {
             killall wbc_status > /dev/null 2>&1
 
             if [ "${ENABLE_QOPENHD}" == "Y" ]; then
-                qstatus "Done - USB memory stick can be removed now" 3
+                qstatus "Done - USB memory stick can be removed now" 5
             else
                 wbc_status "Done - USB memory stick can be removed now" 7 65 0 &
             fi
@@ -338,7 +340,7 @@ function save_function {
             killall wbc_status > /dev/null 2>&1
 
             if [ "${ENABLE_QOPENHD}" == "Y" ]; then
-                qstatus "ERROR: Could not access USB memory stick!" 5
+                qstatus "ERROR: Could not access USB memory stick!" 3
             else
                 wbc_status "ERROR: Could not access USB memory stick!" 7 65 0 &
             fi
@@ -374,7 +376,7 @@ function save_function {
 
 
     killall wbc_status > /dev/null 2>&1
-    OSDRUNNING=`pidof /tmp/osd | wc -w`
+    OSDRUNNING=`pidof /usr/local/bin/osd | wc -w`
 
 
     if [ ${OSDRUNNING}  -ge 1 ]; then
@@ -386,7 +388,7 @@ function save_function {
         # Re-start the OSD, we only do this for the old OSD because QOpenHD never stops
         #
         if [ "${ENABLE_QOPENHD}" != "Y" ]; then
-            /tmp/osd >> /wbc_tmp/telemetrydowntmp.txt &
+            systemctl start osd
         fi
     fi
     
