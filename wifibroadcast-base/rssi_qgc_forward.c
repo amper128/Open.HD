@@ -60,10 +60,10 @@ typedef struct {
     uint8_t temp_gnd;
     uint8_t cpuload_air;
     uint8_t temp_air;
-    uint32_t wifi_adapter_cnt;
     uint8_t vbat_capacity;
     uint8_t is_charging;
     uint16_t vbat_gnd_mv;
+    uint32_t wifi_adapter_cnt;
     wifi_adapter_rx_status_forward_t adapter[6]; // same struct as in wifibroadcast lib.h
 } __attribute__((packed)) wifibroadcast_rx_status_forward_t;
 
@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
 
     int cardcounter = 0;
 
-    fprintf(stderr, "rssi_forward started\n");
+    fprintf(stderr, "rssi_qgc_forward started\n");
 
 
 
