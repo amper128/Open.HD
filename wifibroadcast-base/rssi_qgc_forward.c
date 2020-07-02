@@ -423,7 +423,7 @@ int main(int argc, char *argv[]) {
             wbcdata.adapter[cardcounter].signal_good = t->adapter[cardcounter].signal_good;
         }
 
-        if (sendto(s_rssi, &wbcdata, 113, 0, (struct sockaddr *)&si_other_rssi, slen_rssi) == -1) {
+        if (sendto(s_rssi, &wbcdata, sizeof(wifibroadcast_rx_status_forward_t), 0, (struct sockaddr *)&si_other_rssi, slen_rssi) == -1) {
             printf("ERROR: Could not send RSSI data!");
         }
 
