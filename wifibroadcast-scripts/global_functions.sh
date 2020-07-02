@@ -4,6 +4,28 @@ function tmessage {
     fi
 }
 
+function create_fifos {
+    if [ "$TTY" != "/dev/tty1" ]; then
+        return
+    fi
+    
+    mkdir -p /var/run/openhd
+    
+    mkfifo /var/run/openhd/videofifo1
+    mkfifo /var/run/openhd/videofifo2
+    mkfifo /var/run/openhd/videofifo3
+    mkfifo /var/run/openhd/videofifo4
+    mkfifo /var/run/openhd/telemetryfifo1
+    mkfifo /var/run/openhd/telemetryfifo2
+    mkfifo /var/run/openhd/telemetryfifo3
+    mkfifo /var/run/openhd/telemetryfifo4
+    mkfifo /var/run/openhd/telemetryfifo5
+    mkfifo /var/run/openhd/telemetryfifo6
+    mkfifo /var/run/openhd/mspfifo
+
+    touch /var/run/openhd/fifoready
+}
+
 
 function detect_os {
     source /etc/os-release
@@ -61,7 +83,7 @@ function migration_helper {
     # This is only a bandaid for people who have not updated their settings file yet, just to ensure that things work
     #
     if [[ "${OPENHD_VERSION}" == "buster" ]]; then
-        export USBCamera=`echo ${USBCamera} | python3 -c 'import sys, re; s = sys.stdin.read(); s=re.sub("omxh264enc.+\s*\!", "videoconvert ! v4l2h264enc !", s); print(s);'`
+        export USBCamera=`echo ${USBCamera} | python3 -c 'import sys, re; s = sys.stdin.read(); s=re.sub("omxh264enc.+\s*\!", "v4l2h264enc !", s); print(s);'`
     fi
 }
 
@@ -94,6 +116,10 @@ function detect_hardware {
             MODEL=Pi4b
         ;;
         'c03112')
+            ABLE_BAND=ag
+            MODEL=Pi4b
+        ;;
+        'd03114')
             ABLE_BAND=ag
             MODEL=Pi4b
         ;;
@@ -584,21 +610,21 @@ function set_video_player_based_fps {
     if [ "$CAM" == "0" ]; then         
         if [ "$FPS" == "59.9" ]; then
 
-            DISPLAY_PROGRAM=/opt/vc/src/hello_pi/hello_video/hello_video.bin.48-mm
+            DISPLAY_PROGRAM=/usr/local/bin/hello_video.bin.48-mm
         else
             if [ "$FPS" -eq 30 ]; then
 
-                DISPLAY_PROGRAM=/opt/vc/src/hello_pi/hello_video/hello_video.bin.30-mm
+                DISPLAY_PROGRAM=/usr/local/bin/hello_video.bin.30-mm
             fi
 
             if [ "$FPS" -lt 60 ]; then
 
-                DISPLAY_PROGRAM=/opt/vc/src/hello_pi/hello_video/hello_video.bin.48-mm
+                DISPLAY_PROGRAM=/usr/local/bin/hello_video.bin.48-mm
             fi
             
             if [ "$FPS" -gt 60 ]; then
             
-                DISPLAY_PROGRAM=/opt/vc/src/hello_pi/hello_video/hello_video.bin.240-befi
+                DISPLAY_PROGRAM=/usr/local/bin/hello_video.bin.240-befi
             fi
         fi
     fi
@@ -891,7 +917,7 @@ function collect_errorlog {
     echo >>/boot/errorlog.txt
     nice vcgencmd get_config int >>/boot/errorlog.txt
 
-    nice /home/pi/wifibroadcast-misc/raspi2png -p /boot/errorlog.png
+    nice /usr/bin/raspi2png -p /boot/errorlog.png
     echo >>/boot/errorlog.txt
     nice dmesg >>/boot/errorlog.txt
     echo >>/boot/errorlog.txt
@@ -942,20 +968,20 @@ function wbclogger_function {
         #
         # Start saving Open.HD telemetry to the temporary area, so it can be copied to the USB drive after flight
         #
-        nice /home/pi/wifibroadcast-base/rssilogger /wifibroadcast_rx_status_0 >> /wbc_tmp/videorssi.csv &
-        nice /home/pi/wifibroadcast-base/rssilogger /wifibroadcast_rx_status_1 >> /wbc_tmp/telemetrydownrssi.csv &
-        nice /home/pi/wifibroadcast-base/syslogger /wifibroadcast_rx_status_sysair >> /wbc_tmp/system.csv &
+        nice /usr/local/bin/rssilogger /wifibroadcast_rx_status_0 >> /wbc_tmp/videorssi.csv &
+        nice /usr/local/bin/rssilogger /wifibroadcast_rx_status_1 >> /wbc_tmp/telemetrydownrssi.csv &
+        nice /usr/local/bin/syslogger /wifibroadcast_rx_status_sysair >> /wbc_tmp/system.csv &
 
         if [ "$TELEMETRY_UPLINK" != "disabled" ]; then
-            nice /home/pi/wifibroadcast-base/rssilogger /wifibroadcast_rx_status_uplink >> /wbc_tmp/telemetryuprssi.csv &
+            nice /usr/local/bin/rssilogger /wifibroadcast_rx_status_uplink >> /wbc_tmp/telemetryuprssi.csv &
         fi
 
         if [ "$RC" != "disabled" ]; then
-            nice /home/pi/wifibroadcast-base/rssilogger /wifibroadcast_rx_status_rc >> /wbc_tmp/rcrssi.csv &
+            nice /usr/local/bin/rssilogger /wifibroadcast_rx_status_rc >> /wbc_tmp/rcrssi.csv &
         fi
 
         if [ "$DEBUG" == "Y" ]; then
-            nice /home/pi/wifibroadcast-base/wifibackgroundscan $NICS >> /wbc_tmp/wifibackgroundscan.csv &
+            nice /usr/local/bin/wifibackgroundscan $NICS >> /wbc_tmp/wifibackgroundscan.csv &
         fi
 
         sleep 365d
@@ -1125,7 +1151,7 @@ function prepare_nic {
     fi
 
 
-    if [ "$DRIVER" == "rt2800usb" ] || [ "$DRIVER" == "mt7601u" ] || [ "$DRIVER" == "rtl8192cu" ] || [ "$DRIVER" == "rtl88xxau" ]; then
+    if [ "$DRIVER" == "rt2800usb" ] || [ "$DRIVER" == "mt7601u" ] || [ "$DRIVER" == "rtl8192cu" ] || [ "$DRIVER" == "rtl88xxau" ] || [ "$DRIVER" == "rtl88x2bu" ]; then
         #
         # Do not set the bitrate for Ralink, Mediatek, Realtek, those are handled through tx parameter
         #
