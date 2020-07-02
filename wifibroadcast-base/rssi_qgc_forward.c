@@ -61,6 +61,9 @@ typedef struct {
     uint8_t cpuload_air;
     uint8_t temp_air;
     uint32_t wifi_adapter_cnt;
+    uint8_t vbat_capacity;
+    uint8_t is_charging;
+    uint16_t vbat_gnd_mv;
     wifi_adapter_rx_status_forward_t adapter[6]; // same struct as in wifibroadcast lib.h
 } __attribute__((packed)) wifibroadcast_rx_status_forward_t;
 
@@ -231,6 +234,10 @@ int main(int argc, char *argv[]) {
     int temp_gnd = 0;
     int undervolt_gnd = 0;
 
+    uint8_t vbat_cap = 0;
+    uint8_t is_charging = 0;
+    uint32_t vbat_gnd;
+
     FILE *fp;
     FILE *fp2;
     FILE *fp3;
@@ -294,6 +301,9 @@ int main(int argc, char *argv[]) {
     wbcdata.temp_gnd = 0;
     wbcdata.cpuload_air = 0;
     wbcdata.temp_air = 0;
+    wbcdata.vbat_capacity = 0;
+    wbcdata.is_charging = 0;
+    wbcdata.vbat_gnd_mv = 0;
     wbcdata.wifi_adapter_cnt = 0;
 
 
@@ -371,6 +381,25 @@ int main(int argc, char *argv[]) {
             fp = fopen("/proc/stat", "r");
             fscanf(fp, "%*s %Lf %Lf %Lf %Lf", &b[0], &b[1], &b[2], &b[3]);
             fclose(fp);
+
+            fp = fopen("/sys/class/power_supply/axp288_fuel_gauge/capacity", "r");
+            fscanf(fp, "%u", &vbat_cap);
+            fclose(fp);
+
+            fp = fopen("/sys/class/power_supply/axp288_fuel_gauge/voltage_now", "r");
+            fscanf(fp, "%u", &vbat_gnd);
+            fclose(fp);
+            vbat_gnd /= 1000;
+
+            char bat_status[32];
+            fp = fopen("/sys/class/power_supply/axp288_fuel_gauge/status", "r");
+            fscanf(fp, "%s", bat_status);
+            fclose(fp);
+            if (bat_status[0] == 'C') {
+		is_charging = 1;
+            } else {
+		is_charging = 0;
+            }
         }
 
 
@@ -378,6 +407,11 @@ int main(int argc, char *argv[]) {
         wbcdata.cpuload_gnd = cpuload_gnd;
         wbcdata.temp_gnd = temp_gnd / 1000;
         wbcdata.cpuload_air = t_sysair->cpuload;
+
+        wbcdata.vbat_capacity = vbat_cap;
+        wbcdata.is_charging = is_charging;
+        wbcdata.vbat_gnd_mv = vbat_gnd;
+
 
         wbcdata.temp_air = t_sysair->temp;
         wbcdata.wifi_adapter_cnt = t->wifi_adapter_cnt;
