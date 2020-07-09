@@ -11,6 +11,13 @@ if [[ "${PLATFORM}" == "pi" ]]; then
     PACKAGE_ARCH="armhf"
 fi
 
+apt-get install -y apt-transport-https || exit 1
+curl -1sLf 'https://dl.cloudsmith.io/public/openhd/openhd-2-0/cfg/gpg/gpg.B9F0E99CF5787237.key' | apt-key add - || exit 1
+
+
+echo "deb https://dl.cloudsmith.io/public/openhd/openhd-2-0/deb/${OS} ${DISTRO} main" > /etc/apt/sources.list.d/openhd-2-0.list || exit 1
+
+apt -y update || exit 1
 
 PACKAGE_NAME=openhd
 
@@ -41,25 +48,36 @@ mkdir -p ${TMPDIR}/usr/local/share/cameracontrol || exit 1
 mkdir -p ${TMPDIR}/usr/local/share/wifibroadcast-scripts || exit 1
 
 
-apt install build-essential autotools-dev automake libtool autoconf \
+apt -y install build-essential autotools-dev automake libtool autoconf \
             libpcap-dev libpng-dev libsdl2-dev libsdl1.2-dev libconfig++-dev \
             libreadline-dev libjpeg8-dev libusb-1.0-0-dev libsodium-dev \
             libfontconfig1-dev libfreetype6-dev ttf-dejavu-core \
             libboost-dev libboost-program-options-dev libboost-system-dev libasio-dev libboost-chrono-dev \
-            libboost-regex-dev libboost-filesystem-dev libboost-thread-dev wiringpi
+            libboost-regex-dev libboost-filesystem-dev libboost-thread-dev wiringpi indent || exit 1
+
+
+build_pi_dep() {
+    pushd /opt/vc/src/hello_pi/libs/ilclient
+    make || exit 1
+    popd
+}
 
 
 build_source() {
-    cp openhd-camera/openhdvid ${TMPDIR}/usr/local/bin/ || exit 1
-    chmod +x ${TMPDIR}/usr/local/bin/openhdvid || exit 1
+    if [[ "${PLATFORM}" == "pi" ]]; then
+        cp openhd-camera/openhdvid ${TMPDIR}/usr/local/bin/ || exit 1
+        chmod +x ${TMPDIR}/usr/local/bin/openhdvid || exit 1
+    fi
     
     cp UDPSplitter/udpsplitter.py ${TMPDIR}/usr/local/bin/ || exit 1
 
-    pushd openvg
-    make clean
-    make library || exit 1
-    make install DESTDIR=${TMPDIR} || exit 1
-    popd
+    if [[ "${PLATFORM}" == "pi" && "${DISTRO}" == "stretch" ]]; then
+        pushd openvg
+        make clean
+        make library || exit 1
+        make install DESTDIR=${TMPDIR} || exit 1
+        popd
+    fi
 
     pushd wifibroadcast-base
     make clean
@@ -67,7 +85,15 @@ build_source() {
     make install DESTDIR=${TMPDIR} || exit 1
     popd
 
-    pushd wifibroadcast-status
+    if [[ "${PLATFORM}" == "pi" && "${DISTRO}" == "stretch" ]]; then
+        pushd wifibroadcast-status
+        make clean
+        make || exit 1
+        make install DESTDIR=${TMPDIR} || exit 1
+        popd
+    fi
+
+    pushd openhd-status
     make clean
     make || exit 1
     make install DESTDIR=${TMPDIR} || exit 1
@@ -82,20 +108,22 @@ build_source() {
 
     pushd wifibroadcast-misc
     cp -a ftee ${TMPDIR}/usr/local/bin/ || exit 1
-    cp -a raspi2raspi ${TMPDIR}/usr/local/bin/ || exit 1
+    if [[ "${PLATFORM}" == "pi" ]]; then
+        cp -a raspi2raspi ${TMPDIR}/usr/local/bin/ || exit 1
+    fi
     cp -a gpio-IsAir.py ${TMPDIR}/usr/local/bin/ || exit 1
     cp -a gpio-config.py ${TMPDIR}/usr/local/bin/ || exit 1
     cp -a openhdconfig.sh ${TMPDIR}/usr/local/bin/ || exit 1
     popd
 
 
-
-    pushd wifibroadcast-hello_video
-    make clean
-    make || exit 1
-    make install DESTDIR=${TMPDIR} || exit 1
-    popd
-
+    if [[ "${PLATFORM}" == "pi" ]]; then
+        pushd wifibroadcast-hello_video
+        make clean
+        make || exit 1
+        make install DESTDIR=${TMPDIR} || exit 1
+        popd
+    fi
 
     pushd JoystickIn/JoystickIn
     make clean
@@ -133,20 +161,22 @@ build_source() {
     cp -a rctx ${TMPDIR}/usr/local/bin/ || exit 1
     popd
 
+    if [[ "${PLATFORM}" == "pi" && "${DISTRO}" == "stretch" ]]; then
+        pushd wifibroadcast-osd
+        make clean
+        make || exit 1
+        make install DESTDIR=${TMPDIR} || exit 1
+        cp -a osdfonts/* ${TMPDIR}/usr/local/share/openhd/osdfonts/ || exit 1
+        popd
+    fi
 
-    pushd wifibroadcast-osd
-    make clean
-    make || exit 1
-    make install DESTDIR=${TMPDIR} || exit 1
-    cp -a osdfonts/* ${TMPDIR}/usr/local/share/openhd/osdfonts/ || exit 1
-    popd
-
-
-    pushd wifibroadcast-misc/LCD
-    make || exit 1
-    chmod 755 MouseListener || exit 1
-    cp -a MouseListener ${TMPDIR}/usr/local/bin/ || exit 1
-    popd
+    if [[ "${PLATFORM}" == "pi" && "${DISTRO}" == "stretch" ]]; then
+        pushd wifibroadcast-misc/LCD
+        make || exit 1
+        chmod 755 MouseListener || exit 1
+        cp -a MouseListener ${TMPDIR}/usr/local/bin/ || exit 1
+        popd
+    fi
 
     cp -a wifibroadcast-scripts/* ${TMPDIR}/usr/local/share/wifibroadcast-scripts/ || exit 1
 
@@ -168,6 +198,9 @@ EOF
     cp -a driver-helpers/* ${TMPDIR}/usr/local/bin/ || exit 1
 }
 
+if [[ "${PLATFORM}" == "pi" ]]; then
+    build_pi_dep
+fi
 
 build_source
 
@@ -188,24 +221,24 @@ fpm -a ${PACKAGE_ARCH} -s dir -t deb -n ${PACKAGE_NAME} -v ${VERSION//v} -C ${TM
   --config-files /boot/osdconfig.txt \
   -p ${PACKAGE_NAME}_VERSION_ARCH.deb \
   --after-install after-install.sh \
+  --before-install before-install.sh \
   -d "wiringpi" \
   -d "libasio-dev >= 1.10" \
   -d "libboost-system-dev >= 1.62.0" \
   -d "libboost-program-options-dev >= 1.62.0" \
-  -d "openhd-router = 0.1.5" \
-  -d "openhd-microservice = 0.1.12" \
+  -d "openhd-router = 0.1.7" \
+  -d "openhd-microservice = 0.1.13" \
   -d "qopenhd" \
-  -d "flirone-driver = 20200620.1" \
-  -d "veye-raspberrypi = 20200628.1" \
-  -d "lifepoweredpi = 20200620.1" \
-  -d "mavlink-router = 20200620.1" \
+  -d "flirone-driver = 20200704.3" \
+  -d "veye-raspberrypi = 20200706.1" \
+  -d "lifepoweredpi = 20200704.2" \
+  -d "mavlink-router = 20200704.3" \
   -d "gnuplot-nox" \
   -d "hostapd" \
   -d "iw" \
   -d "pump" \
   -d "dnsmasq" \
   -d "aircrack-ng" \
-  -d "usbmount" \
   -d "ser2net" \
   -d "i2c-tools" \
   -d "dos2unix" \
@@ -224,8 +257,6 @@ fpm -a ${PACKAGE_ARCH} -s dir -t deb -n ${PACKAGE_NAME} -v ${VERSION//v} -C ${TM
   -d "libfontconfig1" \
   -d "libfreetype6" \
   -d "ttf-dejavu-core" \
-  -d "libboost-program-options-dev" \
-  -d "libboost-system-dev" \
   -d "libboost-chrono-dev" \
   -d "libboost-regex-dev" \
   -d "libboost-filesystem-dev" \
