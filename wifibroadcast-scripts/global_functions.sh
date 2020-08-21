@@ -82,7 +82,7 @@ function migration_helper {
     #
     # This is only a bandaid for people who have not updated their settings file yet, just to ensure that things work
     #
-    if [[ "${OPENHD_VERSION}" == "buster" ]]; then
+    if [[ "${OPENHD_VERSION}" == "buster" && "${USBCamera}" != "" ]]; then
         export USBCamera=`echo ${USBCamera} | python3 -c 'import sys, re; s = sys.stdin.read(); s=re.sub("omxh264enc.+\s*\!", "v4l2h264enc !", s); print(s);'`
     fi
 }
@@ -197,6 +197,33 @@ function detect_hardware {
 
 function detect_wfb_primary_band {
     lsmod | grep 88XXau
+    grepRet=$?
+    if [[ $grepRet -eq 0 ]] ; then
+        export WFB_PRIMARY_BAND_58="1"
+        export WFB_PRIMARY_BAND_24="0"
+        echo "58" > /tmp/wfb_primary_band
+        return
+    fi
+
+    lsmod | grep 88xxau
+    grepRet=$?
+    if [[ $grepRet -eq 0 ]] ; then
+        export WFB_PRIMARY_BAND_58="1"
+        export WFB_PRIMARY_BAND_24="0"
+        echo "58" > /tmp/wfb_primary_band
+        return
+    fi
+
+    lsmod | grep 8188eu
+    grepRet=$?
+    if [[ $grepRet -eq 0 ]] ; then
+        export WFB_PRIMARY_BAND_58="0"
+        export WFB_PRIMARY_BAND_24="1"
+        echo "58" > /tmp/wfb_primary_band
+        return
+    fi
+
+    lsmod | grep 88x2bu
     grepRet=$?
     if [[ $grepRet -eq 0 ]] ; then
         export WFB_PRIMARY_BAND_58="1"
@@ -777,7 +804,7 @@ function collect_debug {
 
     echo >>$DEBUGPATH/debug.txt
     echo >>$DEBUGPATH/debug.txt
-    nice cat /boot/openhd-settings-1.txt | egrep -v "^(#|$)" >> $DEBUGPATH/debug.txt
+    nice cat /boot/$CONFIGFILE | egrep -v "^(#|$)" >> $DEBUGPATH/debug.txt
     echo >>$DEBUGPATH/debug.txt
     echo >>$DEBUGPATH/debug.txt
     nice cat /boot/osdconfig.txt | egrep -v "^(//|$)" >> $DEBUGPATH/debug.txt
@@ -929,7 +956,7 @@ function collect_errorlog {
 
     echo >>/boot/errorlog.txt
     echo >>/boot/errorlog.txt
-    nice cat /boot/openhd-settings-1.txt | egrep -v "^(#|$)" >> /boot/errorlog.txt
+    nice cat /boot/$CONFIGFILE | egrep -v "^(#|$)" >> /boot/errorlog.txt
     echo >>/boot/errorlog.txt
     echo >>/boot/errorlog.txt
     nice cat /boot/osdconfig.txt | egrep -v "^(//|$)" >> /boot/errorlog.txt
@@ -1154,7 +1181,7 @@ function prepare_nic {
     fi
 
 
-    if [ "$DRIVER" == "rt2800usb" ] || [ "$DRIVER" == "mt7601u" ] || [ "$DRIVER" == "rtl8192cu" ] || [ "$DRIVER" == "rtl88XXau" ] || [ "$DRIVER" == "rtl88x2bu" ]; then
+    if [ "$DRIVER" == "rt2800usb" ] || [ "$DRIVER" == "mt7601u" ] || [ "$DRIVER" == "rtl8192cu" ] || [ "$DRIVER" == "rtl88XXau" ] || [ "$DRIVER" == "rtl88x2bu" ] || [ "$DRIVER" == "8188eu" ] || [ "$DRIVER" == "rtl8188eu" ]; then
         #
         # Do not set the bitrate for Ralink, Mediatek, Realtek, those are handled through tx parameter
         #

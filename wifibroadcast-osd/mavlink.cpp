@@ -32,7 +32,11 @@ int mavlink_read(telemetry_data_t_osd *td, uint8_t *buf, int buflen) {
              *       to see if it came from a flight controller or not, and only
              *       then decide to use the data it provides.
              */
-            if (msg.compid != MAV_COMP_ID_AUTOPILOT1 && msg.compid != MAV_COMP_ID_SYSTEM_CONTROL) {
+
+            // Note: wrong way to handle this, but it's fine for now, nothing sends any messages and that's the only
+            //       instance where it would matter.
+            // Note: compid 200 is for betaflight mavlink telemetry
+            if (msg.compid != MAV_COMP_ID_AUTOPILOT1 && msg.compid != MAV_COMP_ID_SYSTEM_CONTROL && msg.compid != 200) {
                 return render_data;
             }
             
@@ -175,7 +179,9 @@ int mavlink_read(telemetry_data_t_osd *td, uint8_t *buf, int buflen) {
                 case MAVLINK_MSG_ID_HEARTBEAT: {
                     fprintf(telemetry_file, "HEARTBEAT ");
 
-                    td->mav_flightmode = mavlink_msg_heartbeat_get_custom_mode(&msg);
+                    td->mav_custom_mode = mavlink_msg_heartbeat_get_custom_mode(&msg);
+                    td->mav_base_mode = (MAV_MODE_FLAG)mavlink_msg_heartbeat_get_base_mode(&msg);
+                    td->mav_autopilot = (MAV_AUTOPILOT)mavlink_msg_heartbeat_get_autopilot(&msg);
 
                     /*
                     if (((mavlink_msg_heartbeat_get_base_mode(&msg) & 0b10000000) >> 7) == 0) {
@@ -289,7 +295,7 @@ int mavlink_read(telemetry_data_t_osd *td, uint8_t *buf, int buflen) {
                         fprintf(telemetry_file, "UNKNOWN base mode: %d", td->armed);
                     }
                         
-                    fprintf(telemetry_file, "mode: %d", td->mav_flightmode);
+                    fprintf(telemetry_file, "mode: %d", td->mav_custom_mode);
                     fprintf(telemetry_file, "armed: %d", td->armed);
                     
                     break;

@@ -310,6 +310,10 @@ IMX290_mirrormode=0x00
 IMX290_denoise=0x00
 IMX290_lowlight=0x00
 
+# Used to flip/mirror the IMX307 camera, separate setting from IMX290 because they don't handle it the same way
+# 0: normal, 1: flip, 2: mirror, 3: flip+mirror. 
+# Note that the IMX307 configuration system seems to expect numbers like 0, not 0x00 like imx290 mirrormode
+IMX307_imagedir=0
 
 # ======================================================================================
 #                    <DEVELOPER-ENHANCEMENTS IN PROGRESS OPTIONS>
@@ -412,6 +416,16 @@ ChannelIPCamera=7
 # Values: Y N
 LoadFlirDriver=N
 
+# >>>>>>>>>>[OPTIONAL SEEK-USB CAMERA DRIVER SETUP]--
+# Values: Y N
+LoadSeekDriver=N
+# You should change this in USBCamera as well if you need to change it at all
+SeekFramerate=7
+# This affects the colorization used for the thermal range, experiement to find the one you like
+SeekColormap=0
+SeekRotate=270
+# Can also be seekpro
+SeekModel=seek
 
 # >>>>>>>>>>[IP/USB CAMERA PIPELINE OPTIONS]--*Uncomment corresponding per ip/usb camera type
 #USBCamera="gst-launch-1.0 uvch264src device=/dev/video0 initial-bitrate=\$1 average-bitrate=\$1 iframe-period=1000 name=src auto-start=true src.vidsrc ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! h264parse ! rtph264pay ! udpsink host=127.0.0.1 port=5600"
@@ -425,6 +439,13 @@ LoadFlirDriver=N
 
 #FLIR Thermal  - 160 x 128 @ 9fps:
 #USBCamera="gst-launch-1.0 v4l2src device=/dev/video3 ! video/x-raw,width=160,height=128,framerate=30/1 ! omxh264enc control-rate=1 target-bitrate=600000 interval-intraframes=1 periodicty-idr=1 ! h264parse config-interval=3 ! rtph264pay ! udpsink host=127.0.0.1 port=5600"
+
+#Seek Thermal  - 206 x 156 @ 7fps:
+#USBCamera="gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=206,height=156,framerate=7/1 ! omxh264enc control-rate=1 target-bitrate=600000 interval-intraframes=1 periodicty-idr=1 ! h264parse config-interval=3 ! rtph264pay ! udpsink host=127.0.0.1 port=5600"
+
+#Seek Thermal Pro - 320 x 240 @ 15fps:
+#USBCamera="gst-launch-1.0 v4l2src device=/dev/video4 ! video/x-raw,width=320,height=240,framerate=15/1 ! omxh264enc control-rate=1 target-bitrate=600000 interval-intraframes=1 periodicty-idr=1 ! h264parse config-interval=3 ! rtph264pay ! udpsink host=127.0.0.1 port=5600"
+
 
 #gstreamer videotestsrc:
 #USBCamera="gst-launch-1.0 videotestsrc ! video/x-raw,width=160,height=120,framerate=30/1 ! omxh264enc control-rate=1 target-bitrate=600000 interval-intraframes=1 periodicty-idr=1 ! h264parse config-interval=3 ! rtph264pay ! udpsink host=127.0.0.1 port=5600"
@@ -465,6 +486,9 @@ AutoDimValue=255
 # >>>>>>>>>> [TTY CONSOLE]-- View Output of GroundPi Consoles and Scripts
 # set to "13" for a blank screen
 TTY_CONSOLE=13
+
+# Used to override the 802.11 frame type that will be used for telemetry, for testing purposes
+FORCE_REALTEK_TELEMETRY_DATA_FRAME=N
 
 # ======================================================================================
 #                          FREQUENCY LIST AND OTHER Settings

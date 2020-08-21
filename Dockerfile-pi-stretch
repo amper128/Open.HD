@@ -1,8 +1,10 @@
 FROM openhd/2018-10-09-raspbian-stretch-lite:v1  
 
-COPY . /data/
-
 RUN apt update
+
+COPY install_dep.sh /data/install_dep.sh
+
+RUN /data/install_dep.sh
 
 RUN apt -y install git
 
@@ -16,10 +18,12 @@ RUN gem install fpm
 
 RUN pip install cloudsmith-cli
 
+COPY . /data/
+
 WORKDIR /data
 
 ARG CLOUDSMITH_API_KEY=000000000000
 
 RUN export CLOUDSMITH_API_KEY=$CLOUDSMITH_API_KEY
 
-RUN /data/package.sh pi stretch
+RUN /data/package.sh pi stretch docker

@@ -3,12 +3,22 @@
 
 PLATFORM=$1
 DISTRO=$2
+BUILD_TYPE=$3
 
 
 if [[ "${PLATFORM}" == "pi" ]]; then
     OS="raspbian"
     ARCH="arm"
     PACKAGE_ARCH="armhf"
+fi
+
+if [ "${BUILD_TYPE}" == "docker" ]; then
+    cat << EOF > /etc/resolv.conf
+options rotate
+options timeout:1
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+EOF
 fi
 
 apt-get install -y apt-transport-https || exit 1
@@ -30,7 +40,12 @@ mkdir -p ${TMPDIR}/root || exit 1
 mkdir -p ${TMPDIR}/boot || exit 1
 mkdir -p ${TMPDIR}/boot/osdfonts || exit 1
 
+mkdir -p ${TMPDIR}/etc/network || exit 1
+mkdir -p ${TMPDIR}/etc/sysctl.d || exit 1
 mkdir -p ${TMPDIR}/etc/systemd/system || exit 1
+
+mkdir -p ${TMPDIR}/home/pi || exit 1
+mkdir -p ${TMPDIR}/root || exit 1
 
 mkdir -p ${TMPDIR}/usr/bin || exit 1
 mkdir -p ${TMPDIR}/usr/sbin || exit 1
@@ -39,6 +54,7 @@ mkdir -p ${TMPDIR}/usr/lib || exit 1
 mkdir -p ${TMPDIR}/usr/include || exit 1
 
 mkdir -p ${TMPDIR}/usr/local/bin || exit 1
+mkdir -p ${TMPDIR}/usr/local/etc || exit 1
 mkdir -p ${TMPDIR}/usr/local/share || exit 1
 
 mkdir -p ${TMPDIR}/usr/local/share/openhd/osdfonts || exit 1
@@ -47,14 +63,7 @@ mkdir -p ${TMPDIR}/usr/local/share/RemoteSettings || exit 1
 mkdir -p ${TMPDIR}/usr/local/share/cameracontrol || exit 1
 mkdir -p ${TMPDIR}/usr/local/share/wifibroadcast-scripts || exit 1
 
-
-apt -y install build-essential autotools-dev automake libtool autoconf \
-            libpcap-dev libpng-dev libsdl2-dev libsdl1.2-dev libconfig++-dev \
-            libreadline-dev libjpeg8-dev libusb-1.0-0-dev libsodium-dev \
-            libfontconfig1-dev libfreetype6-dev ttf-dejavu-core \
-            libboost-dev libboost-program-options-dev libboost-system-dev libasio-dev libboost-chrono-dev \
-            libboost-regex-dev libboost-filesystem-dev libboost-thread-dev wiringpi indent || exit 1
-
+./install_dep.sh || exit 1
 
 build_pi_dep() {
     pushd /opt/vc/src/hello_pi/libs/ilclient
@@ -180,7 +189,15 @@ build_source() {
 
     cp -a wifibroadcast-scripts/* ${TMPDIR}/usr/local/share/wifibroadcast-scripts/ || exit 1
 
-    cp -a systemd/* ${TMPDIR}/etc/systemd/system/ || exit 1
+    cp -a overlay/etc/* ${TMPDIR}/etc/ || exit 1
+    
+    # note: this is non-standard behavior, packaging stuff in /root and /home, but it's temporary
+    cp -a overlay/root/.bashrc ${TMPDIR}/root/ || exit 1
+    cp -a overlay/home/pi/.bashrc ${TMPDIR}/home/pi/ || exit 1
+
+    cp -a overlay/usr/local/etc/* ${TMPDIR}/usr/local/etc/ || exit 1
+
+    cp -a overlay/etc/systemd/system/* ${TMPDIR}/etc/systemd/system/ || exit 1
 
     cp -a gnuplot/* ${TMPDIR}/usr/local/share/openhd/gnuplot/ || exit 1
 
@@ -226,13 +243,16 @@ fpm -a ${PACKAGE_ARCH} -s dir -t deb -n ${PACKAGE_NAME} -v ${VERSION//v} -C ${TM
   -d "libasio-dev >= 1.10" \
   -d "libboost-system-dev >= 1.62.0" \
   -d "libboost-program-options-dev >= 1.62.0" \
-  -d "openhd-router = 0.1.7" \
-  -d "openhd-microservice = 0.1.13" \
+  -d "openhd-router >= 0.1.8" \
+  -d "openhd-microservice >= 0.1.18" \
   -d "qopenhd" \
-  -d "flirone-driver = 20200704.3" \
-  -d "veye-raspberrypi = 20200706.1" \
-  -d "lifepoweredpi = 20200704.2" \
-  -d "mavlink-router = 20200704.3" \
+  -d "openhd-linux-pi >= 20200802.1" \
+  -d "libseek-thermal >= 20200801.1" \
+  -d "flirone-driver >= 20200704.3" \
+  -d "veye-raspberrypi >= 20200706.1" \
+  -d "lifepoweredpi >= 20200704.2" \
+  -d "mavlink-router >= 20200704.3" \
+  -d "raspi2png >= 20200704.2" \
   -d "gnuplot-nox" \
   -d "hostapd" \
   -d "iw" \
@@ -252,11 +272,12 @@ fpm -a ${PACKAGE_ARCH} -s dir -t deb -n ${PACKAGE_NAME} -v ${VERSION//v} -C ${TM
   -d "libsdl1.2debian" \
   -d "libconfig++9v5" \
   -d "libreadline-dev" \
-  -d "libjpeg8" \
+  -d "libjpeg62-turbo" \
   -d "libsodium-dev" \
   -d "libfontconfig1" \
   -d "libfreetype6" \
   -d "ttf-dejavu-core" \
+  -d "libgles2-mesa-dev" \
   -d "libboost-chrono-dev" \
   -d "libboost-regex-dev" \
   -d "libboost-filesystem-dev" \
@@ -280,6 +301,7 @@ if [[ $? -eq 0 ]]; then
     echo "Pushing package to OpenHD repository"
     cloudsmith push deb openhd/openhd-2-0/${OS}/${DISTRO} ${PACKAGE_NAME}_${VERSION//v}_${PACKAGE_ARCH}.deb || exit 1
 else
-    echo "Not a tagged release, skipping push to OpenHD repository"
+    echo "Pushing package to OpenHD testing repository"
+    cloudsmith push deb openhd/openhd-2-0-testing/${OS}/${DISTRO} ${PACKAGE_NAME}_${VERSION//v}_${PACKAGE_ARCH}.deb || exit 1
 fi
 

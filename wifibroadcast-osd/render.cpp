@@ -37,16 +37,16 @@ int height;
 long long amps_ts; 
 long long dist_ts; 
 long long time_ts;
-float total_amps; 
-double total_dist; 
-float total_time;
+float total_amps = 0.0; 
+double total_dist = 0.0; 
+float total_time = 0.0;
 
 float scale_factor_font;
 bool setting_home;
 bool home_set;
-float home_lat;
-float home_lon;
-int home_counter;
+float home_lat = 0.0;
+float home_lon = 0.0;
+int home_counter = 0;;
 
 #define TEXT_BUFFER_SIZE 40
 char buffer[TEXT_BUFFER_SIZE];
@@ -312,7 +312,7 @@ void render(telemetry_data_t_osd *td, uint8_t cpuload_gnd, uint8_t temp_gnd, uin
 
     if (FLIGHTMODE) {
         if (MAVLINK) {
-            draw_mavlink_mode(td->mav_flightmode, td->armed, FLIGHTMODE_POS_X, FLIGHTMODE_POS_Y, FLIGHTMODE_SCALE * GLOBAL_SCALE);
+            draw_mavlink_mode(td->mav_custom_mode, td->mav_base_mode, td->mav_autopilot, td->armed, FLIGHTMODE_POS_X, FLIGHTMODE_POS_Y, FLIGHTMODE_SCALE * GLOBAL_SCALE);
         }
 
         if (VOT) {
@@ -682,7 +682,7 @@ void draw_ltm_mode(int mode, int armed, int failsafe, float pos_x, float pos_y, 
 }
 
 
-void draw_mavlink_mode(int mode, int armed, float pos_x, float pos_y, float scale) {
+void draw_mavlink_mode(uint32_t custom_mode, MAV_MODE_FLAG mav_base_mode, MAV_AUTOPILOT autopilot, int armed, float pos_x, float pos_y, float scale) {
     /*
      * Autopilot mode, mavlink specific, could be used if mode is in telemetry data of other protocols as well
      */
@@ -693,17 +693,28 @@ void draw_mavlink_mode(int mode, int armed, float pos_x, float pos_y, float scal
 
     const char *fmode;
 
-    if (COPTER) {
-        if (CHINESE) {
-            fmode = chinese_copter_mode_from_enum((COPTER_MODE)mode);
-        } else {
-            fmode = copter_mode_from_enum((COPTER_MODE)mode);
+    switch (autopilot) {
+        case MAV_AUTOPILOT_PX4: {
+            if (mav_base_mode & MAV_MODE_FLAG_CUSTOM_MODE_ENABLED) {
+                fmode = px4_mode_from_custom_mode(custom_mode);
+            }
+            break;
         }
-    } else {
-        if (CHINESE) {
-            fmode = chinese_plane_mode_from_enum((PLANE_MODE)mode);
-        } else {
-            fmode = plane_mode_from_enum((PLANE_MODE)mode);
+        default: {
+            if (COPTER) {
+                if (CHINESE) {
+                    fmode = chinese_copter_mode_from_enum((COPTER_MODE)custom_mode);
+                } else {
+                    fmode = copter_mode_from_enum((COPTER_MODE)custom_mode);
+                }
+            } else {
+                if (CHINESE) {
+                    fmode = chinese_plane_mode_from_enum((PLANE_MODE)custom_mode);
+                } else {
+                    fmode = plane_mode_from_enum((PLANE_MODE)custom_mode);
+                }
+            }
+            break;
         }
     }
 
@@ -1922,16 +1933,16 @@ void draw_speed_ladder(int speed, float pos_x, float pos_y, float scale, float t
         /* 
          * Opaque, yellow for descent
          */
-        Stroke(COLOR_DECLUTTER_R, COLOR_DECLUTTER_G, COLOR_DECLUTTER_B, COLOR_DECLUTTER_A);
+        //Stroke(COLOR_DECLUTTER_R, COLOR_DECLUTTER_G, COLOR_DECLUTTER_B, COLOR_DECLUTTER_A);
 
-        Fill(245, 222, 20, getOpacity(COLOR_R, COLOR_G, COLOR_B, COLOR_A));
+        //Fill(245, 222, 20, getOpacity(COLOR_R, COLOR_G, COLOR_B, COLOR_A));
     } else {
         /* 
          * Opaque, green for climb
          */
-        Stroke(COLOR_DECLUTTER_R, COLOR_DECLUTTER_G, COLOR_DECLUTTER_B, COLOR_DECLUTTER_A);
+        //Stroke(COLOR_DECLUTTER_R, COLOR_DECLUTTER_G, COLOR_DECLUTTER_B, COLOR_DECLUTTER_A);
 
-        Fill(43, 240, 36, getOpacity(COLOR_R, COLOR_G, COLOR_B, COLOR_A));
+        //Fill(43, 240, 36, getOpacity(COLOR_R, COLOR_G, COLOR_B, COLOR_A));
     }
 
     
@@ -2030,7 +2041,7 @@ void draw_yaw_display(float vy, float pos_x, float pos_y, float scale, float tre
         LX = &Left_X[0];
         LY = &Left_Y[0];
 
-        Polygon(LX, LY, npt);
+        //Polygon(LX, LY, npt);
     }
 
     if (vy > 0) {
@@ -2050,7 +2061,7 @@ void draw_yaw_display(float vy, float pos_x, float pos_y, float scale, float tre
         LX = &Left_X[0];
         LY = &Left_Y[0];
 
-        Polygon(LX, LY, npt);
+        //Polygon(LX, LY, npt);
     }
 }
 
